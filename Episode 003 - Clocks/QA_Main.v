@@ -9,7 +9,7 @@
 /*   System: Core                                                          */
 /*   Role: Top Level                                                       */
 /*   Filename: QA_Main.v                                                   */
-/*   Date: 18th January 2021                                               */
+/*   Date: 20th January 2021                                               */
 /*   Created By: Benjamin Rosser                                           */
 /*                                                                         */
 /*   This code is covered by Creative Commons CC-BY-NC-SA license          */
@@ -72,7 +72,6 @@ module QA_Main (
 	output             DRAM_WE_N
 
 );
-
   //-----
   //7SEGS
 	assign HEX0 = 7'h7F;
@@ -81,76 +80,74 @@ module QA_Main (
 	assign HEX3 = 7'h7F;
 	assign HEX4 = 7'h7F;
 	assign HEX5 = 7'h7F;
-	
 
 
-  //-----------
-	//Clock Input
-	wire ClkAutoInput   = GPIO_0[0];
+	//-----------
+  //Clock Input
+	wire ClkAutoInput = GPIO_0[0];
 	wire ClkManualInput = ~KEY[0];
-
-
-
+	
+	
 	//-----------------------
 	//Clock Prescaler Counter
-	reg[2:0] ClkPrescalerCounterReg = 3'b000;
-
+	reg [2:0] ClkPrescalerCounterReg = 3'b000;
+	
 	always @ (posedge ClkAutoInput)
 	begin
-    ClkPrescalerCounterReg <= ClkPrescalerCounterReg + 3'b001;
+	  ClkPrescalerCounterReg <= ClkPrescalerCounterReg + 3'b001;
 	end
 	
-	wire[3:0] ClkPrescalerCounter = {ClkPrescalerCounterReg[2:0], ClkAutoInput};
-
-  //assign LEDR[3:0] = ClkPrescalerCounter;
+	wire [3:0] ClkPrescalerCounter = {ClkPrescalerCounterReg, ClkAutoInput};
+	
+	//assign LEDR[3:0] = ClkPrescalerCount;
 	
 	
 	//------------------------
-	//Clock Prescaler Selector (Barrel Shifter)
-	reg[3:0] ClkPrescalerSelectorReg = 4'b0001;
-
+	//Clock Prescaler Selector
+	reg [3:0] ClkPrescalerSelectorReg = 4'b1000;
+	
 	wire ClkPrescalerSelectFaster = ~KEY[2];
 	wire ClkPrescalerSelectSlower = ~KEY[3];
 	
 	always @ (negedge RESET_N or posedge ClkAutoInput)
-	begin
-	
-	  //Reset
-	  if (~RESET_N)
+  begin
+    
+		//Reset
+		if (~RESET_N)
 		begin
-		  ClkPrescalerSelectorReg = 4'b1000;
+		  ClkPrescalerSelectorReg <= 4'b1000;
 		end
 		//Faster
 		else if (ClkPrescalerSelectFaster)
 		begin
-		  ClkPrescalerSelectorReg <= {ClkPrescalerSelectorReg[0], ClkPrescalerSelectorReg[3:1]};
+      ClkPrescalerSelectorReg <= {ClkPrescalerSelectorReg[0], ClkPrescalerSelectorReg[3:1]};		  
 		end
 		//Slower
 		else if (ClkPrescalerSelectSlower)
 		begin
 		  ClkPrescalerSelectorReg <= {ClkPrescalerSelectorReg[2:0], ClkPrescalerSelectorReg[3]};
 		end
+		
+  end	
 	
-	end
-
 	//assign LEDR[3:0] = ClkPrescalerSelectorReg;
-
 	
+
 	//--------------
 	//Clock Selector
 	wire ClkPrescaled = ((ClkPrescalerCounter & ClkPrescalerSelectorReg) != 4'b0000);
 	
-	wire ClkSelect      = SW[0];
-
-	wire ClkAuto        = ClkSelect & ClkPrescaled;
-	wire ClkManual      = ~ClkSelect & ClkManualInput; 
-	wire Clk            = ClkAuto | ClkManual;
-
+	wire ClkSelect = SW[0];
+	
+	wire ClkAuto   = ClkSelect & ClkPrescaled;
+	wire ClkManual = ~ClkSelect & ClkManualInput;
+	wire Clk       = ClkAuto | ClkManual;
+	
 	
 	//------
-	//Output 
+	//Output
 	assign LEDR = {Clk, ClkSelect, 4'b0000, ClkPrescalerSelectorReg[3:0]};
 	
 
-endmodule 
+endmodule
 
